@@ -1,41 +1,13 @@
-FROM scratch
-COPY --from=qemux/qemu-docker:5.16 / /
+FROM microsoft/windows-server
 
-ARG VERSION_ARG="0.0"
-ARG DEBCONF_NOWARNINGS="yes"
-ARG DEBIAN_FRONTEND="noninteractive"
-ARG DEBCONF_NONINTERACTIVE_SEEN="true"
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get -y install wget
 
-RUN set -eu && \
-    apt-get update && \
-    apt-get --no-install-recommends -y install \
-        bc \
-        curl \
-        7zip \
-        wsdd \
-        samba \
-        xz-utils \
-        wimtools \
-        dos2unix \
-        cabextract \
-        genisoimage \
-        libxml2-utils && \
-    apt-get clean && \
-    echo "$VERSION_ARG" > /run/version && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN wget -qO /bin/ttyd https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 && \
+    chmod +x /bin/ttyd
 
-COPY --chmod=755 ./src /run/
-COPY --chmod=755 ./assets /run/assets
+EXPOSE $PORT
+RUN echo $CREDENTIAL > /tmp/debug
 
-ADD --chmod=755 https://raw.githubusercontent.com/christgau/wsdd/v0.8/src/wsdd.py /usr/sbin/wsdd
-ADD --chmod=664 https://github.com/qemus/virtiso/releases/download/v0.1.248/virtio-win-0.1.248.tar.xz /drivers.txz
-
-EXPOSE 8006 3389
-VOLUME /storage
-
-ENV RAM_SIZE "4G"
-ENV CPU_CORES "2"
-ENV DISK_SIZE "64G"
-ENV VERSION "win11"
-
-ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
+CMD ["/bin/bash", "-c", "/bin/ttyd -p $PORT -c $USERNAME:$PASSWORD /bin/bash"]
